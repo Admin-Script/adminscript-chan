@@ -1,4 +1,7 @@
-const Discord = require('discord.js');
+const Discord = require("discord.js");
+let Adminscript = require("adminscript");
+const { spawn } = require('child_process');
+//const AdminScript = require("./AdminScript.js/main.js");
 
 let getClient = function(Discord){
     let flags = Discord.Intents.FLAGS;
@@ -38,15 +41,7 @@ let Bot = require("./bot.js");
 
 let main = async function(){
     let bot = (new Bot(client,"?"));
-    let a = bot.sub("adminscript");
-    a.sub("exec").addFunc((msg,substr)=>{
-        console.log("exec called");
-        msg.reply(substr);
-    });
     
-    a.sub("parse").addFunc((msg,substr)=>{
-        msg.reply(substr);
-    });
     
     let initmsgs = [];
     bot.onReady(()=>{
@@ -65,6 +60,61 @@ let main = async function(){
                 console.log(channel.type);
                 channel.send(initmsgs.join("\n"));
             });
+        });
+    });
+    
+    
+    
+    
+    
+    let a = bot.sub("adminscript");
+    bot.sub("exec").addFunc((msg,substr)=>{
+        console.log("exec called");
+        msg.reply(substr);
+    });
+    
+    let parsecmd = bot.sub("parse");
+    parsecmd.addFunc((msg,substr)=>{
+        console.log("\""+substr+"\"");
+        try{
+            let ast = Adminscript.parse(substr)[0];
+            msg.reply("```javascript\n"+JSON.stringify(ast,null,4)+"\n```");
+        }catch(err){
+            msg.reply(err+"");
+        }
+    });
+    
+    parsecmd.sub("-e").addFunc((msg,substr)=>{
+        console.log("\""+substr+"\"");
+        try{
+            let ast = Adminscript.parse(substr);
+            msg.reply("```javascript\n"+JSON.stringify(ast,null,4)+"\n```");
+        }catch(err){
+            msg.reply(err+"");
+        }
+    });
+    
+    bot.sub("inspect").addFunc((msg,substr)=>{
+        let varname = substr.trim();
+        if("msg substr bot this Adminscript main client".split(" ").indexOf(varname) !== -1){
+            let variable = eval(varname)//this[varname];
+            msg.reply("```javascript\n"+JSON.stringify(variable,function(key, val) { return (typeof val === 'function') ? '[function]' : val; },4)+"\n```");
+        }else{
+            msg.reply(varname+": access to variable denied");
+        }
+    });
+    
+    bot.sub("update").addFunc(async (msg,substr)=>{
+        msg.reply("updating itself");
+        const child = spawn("npm", ["update"]);
+        for await (const data of child.stdout) {
+            msg.channel.send(""+data);
+        };
+        child.on("exit", code => {
+            msg.channel.send("Update complete");
+            msg.channel.send(`Exit code is: ${code}`);
+            delete require.cache[require.resolve("adminscript")];
+            Adminscript = require("adminscript");
         });
     });
 };
